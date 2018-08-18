@@ -5,11 +5,14 @@ from utils.data_processing_utils import (
     prepare_movie_conv,
 )
 
+from utils.config import PAD_ID, EOS_ID, UNK_ID
+
 import tqdm
 import pickle
 import argparse
 import logging
 import os
+from typing import Tuple
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
@@ -43,11 +46,11 @@ def prepare_uterances(movie_lines_path: str, word_freq: dict) -> dict:
     """Prepares a dict as id = movie line
 
     Args:
-        A path where the movie_lines.txt file is
+        movie_lines_path: A path where the movie_lines.txt file is
         word_freq: A dict as word = freq
 
     Returns:
-        uterances: A dict as id = movie line
+        dialogs: A dict as id = movie line
 
     """
     dialogs = {}
@@ -61,7 +64,36 @@ def prepare_uterances(movie_lines_path: str, word_freq: dict) -> dict:
     return dialogs
 
 
-def design_inputs_outputs(args) -> None:
+def build_vocab(movie_lines_path: str, word_freq: dict) -> Tuple:
+    """Builds the vocabulary
+
+    Args:
+        movie_lines_path: A path where the movie_lines.txt file is
+        word_freq: A dict as word = freq
+
+    Returns:
+        word2index: A dict that maps word = index
+        index2word: A dict that maps index = word
+
+    """
+    word2index = {"<pad>": PAD_ID, "<end>": EOS_ID, "<unk>": UNK_ID}
+    index = 0
+    with open(movie_lines_path, "rb") as movie_lines:
+        for movie_line_row in tqdm.tqdm(movie_lines):
+            _, movie_line_clean = prepare_movie_line(movie_line_row)
+            raw_words = prepare_input(movie_line_clean)
+            unked_words = replace_with_unk(raw_words, word_freq)
+            for word in unked_words:
+                if word not in word2index:
+                    word2index[word] = index
+                    index += 1
+
+    index2word = dict(zip(word2index.values(), word2index.keys()))
+
+    return word2index, index2word
+
+
+def design_inputs_outputs_vocab(args) -> None:
     """Creates the input and output pickles
 
     Args:
@@ -74,21 +106,31 @@ def design_inputs_outputs(args) -> None:
     mov_conv_path = os.path.join(args.data_dir, "movie_conversations.txt")
     pickle_inputs = os.path.join(args.pickle_dir, "inputs.pkl")
     pickle_outputs = os.path.join(args.pickle_dir, "outputs.pkl")
+    pickle_word2index = os.path.join(args.pickle_dir, "word2index.pkl")
+    pickle_index2word = os.path.join(args.pickle_dir, "index2word.pkl")
 
+    # Compute input and outputs pickles
     inputs = []
     outputs = []
     word_freq = compute_word_frequencies(mov_lines_path)
-    dialogs = prepare_uterances(mov_lines_path, word_freq)
+    dialogs_sentences = prepare_uterances(mov_lines_path, word_freq)
 
     with open(mov_conv_path, "rb") as mov_conv_file:
         for movie_conv_row in tqdm.tqdm(mov_conv_file):
             conversations = prepare_movie_conv(movie_conv_row)
             for c in range(len(conversations) - 1):
-                inputs.append(dialogs[conversations[c]])
-                outputs.append(dialogs[conversations[c + 1]])
+                inputs.append(dialogs_sentences[conversations[c]])
+                outputs.append(dialogs_sentences[conversations[c + 1]])
 
     pickle.dump(inputs, open(pickle_inputs, "wb"))
     pickle.dump(outputs, open(pickle_outputs, "wb"))
+    log.info(f"Input and output pickles dumped at location {args.pickle_dir}")
+
+    # Compute word2index and index2word pickles
+    word2index, index2word = build_vocab(mov_lines_path, word_freq)
+    pickle.dump(word2index, open(pickle_word2index, "wb"))
+    pickle.dump(index2word, open(pickle_index2word, "wb"))
+    log.info(f"Word2index and index2word pickles dumped at location {args.pickle_dir}")
 
 
 if __name__ == "__main__":
@@ -107,4 +149,4 @@ if __name__ == "__main__":
         "--pickle_dir", type=str, default="data/", help="Path where the data is"
     )
 
-    design_inputs_outputs(parser.parse_args())
+    design_inputs_outputs_vocab(parser.parse_args())

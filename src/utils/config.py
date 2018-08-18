@@ -1,0 +1,3 @@
+PAD_ID = 0
+UNK_ID = 1
+EOS_ID = 2
