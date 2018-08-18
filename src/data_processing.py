@@ -51,15 +51,17 @@ def prepare_uterances(movie_lines_path: str, word_freq: dict) -> dict:
 
     Returns:
         dialogs: A dict as id = movie line
+        dialogs_lengths: A dict as id = length of movie line
 
     """
     dialogs = {}
+    lengths = {}
     with open(movie_lines_path, "rb") as movie_lines:
         for movie_line_row in tqdm(movie_lines):
             id, movie_line_clean = prepare_movie_line(movie_line_row)
             raw_words = prepare_input(movie_line_clean)
             unked_words = replace_with_unk(raw_words, word_freq)
-            dialogs[id] = " ".join(unked_words)
+            dialogs[id] = unked_words
 
     return dialogs
 
@@ -106,24 +108,38 @@ def design_inputs_outputs_vocab(args) -> None:
     mov_conv_path = os.path.join(args.data_dir, "movie_conversations.txt")
     pickle_inputs = os.path.join(args.pickle_dir, "inputs.pkl")
     pickle_outputs = os.path.join(args.pickle_dir, "outputs.pkl")
+    pickle_inputs_length = os.path.join(args.pickle_dir, "inputs_length.pkl")
+    pickle_outputs_length = os.path.join(args.pickle_dir, "outputs_length.pkl")
     pickle_word2index = os.path.join(args.pickle_dir, "word2index.pkl")
     pickle_index2word = os.path.join(args.pickle_dir, "index2word.pkl")
 
     # Compute input and outputs pickles
     inputs = []
     outputs = []
+    # Compute inputs length and outputs length
+    inputs_lengths = []
+    outputs_lengths = []
     word_freq = compute_word_frequencies(mov_lines_path)
-    dialogs_sentences = prepare_uterances(mov_lines_path, word_freq)
+    dialogs = prepare_uterances(mov_lines_path, word_freq)
 
     with open(mov_conv_path, "rb") as mov_conv_file:
         for movie_conv_row in tqdm(mov_conv_file):
             conversations = prepare_movie_conv(movie_conv_row)
             for c in range(len(conversations) - 1):
-                inputs.append(dialogs_sentences[conversations[c]])
-                outputs.append(dialogs_sentences[conversations[c + 1]])
+                input = dialogs[conversations[c]]
+                output = dialogs[conversations[c + 1]]
+                input_length = len(input)
+                output_length = len(output)
+                inputs.append(input)
+                outputs.append(output)
+                inputs_lengths.append(input_length)
+                outputs_lengths.append(output_length)
+
 
     pickle.dump(inputs, open(pickle_inputs, "wb"))
     pickle.dump(outputs, open(pickle_outputs, "wb"))
+    pickle.dump(inputs_lengths, open(pickle_inputs_length, "wb"))
+    pickle.dump(outputs_lengths, open(pickle_outputs_length, "wb"))
     log.info(f"Input and output pickles dumped at location {args.pickle_dir}")
 
     # Compute word2index and index2word pickles
