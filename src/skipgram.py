@@ -70,14 +70,12 @@ def create_skipgram_train_data(args) -> np.array:
     skipgram_train_data = []
     log.info("Preparing the skipgram training data")
     for input_sen, output_sen in tqdm(zip(input_sentences, output_sentences)):
-        input_words = input_sen.split()
-        output_words = output_sen.split()
 
         skipgram_train_data = add_pair_to_train(
-            input_words, skipgram_train_data, word2index
+            input_sen, skipgram_train_data, word2index
         )
         skipgram_train_data = add_pair_to_train(
-            output_words, skipgram_train_data, word2index
+            output_sen, skipgram_train_data, word2index
         )
 
     return np.array(skipgram_train_data)
