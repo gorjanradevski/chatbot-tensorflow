@@ -1,3 +1,13 @@
+# Indexes for special tokens
 PAD_ID = 0
 UNK_ID = 1
 EOS_ID = 2
+
+# Skipgram settings
+WINDOW_SIZE = 2
+SKIPGRAM_BATCH_SIZE = 256
+EMBEDDING_SIZE = 200
+NUM_SAMPLED = 64
+SKIPGRAM_EPOCHS = 1
+VOCAB_SIZE = 20546
+SKIPGRAM_LR = 1.0

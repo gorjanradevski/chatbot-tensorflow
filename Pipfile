@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 tqdm = "*"
+numpy = "*"
+tensorflow = "*"
 
 [dev-packages]
 

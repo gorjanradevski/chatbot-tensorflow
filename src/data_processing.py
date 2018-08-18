@@ -7,7 +7,7 @@ from utils.data_processing_utils import (
 
 from utils.config import PAD_ID, EOS_ID, UNK_ID
 
-import tqdm
+from tqdm import tqdm
 import pickle
 import argparse
 import logging
@@ -30,7 +30,7 @@ def compute_word_frequencies(movie_lines_path: str) -> dict:
     """
     word_freq = {}
     with open(movie_lines_path, "rb") as movie_lines:
-        for movie_line_raw in tqdm.tqdm(movie_lines):
+        for movie_line_raw in tqdm(movie_lines):
             _, movie_line_clean = prepare_movie_line(movie_line_raw)
             raw_words = prepare_input(movie_line_clean)
             for word in raw_words:
@@ -55,7 +55,7 @@ def prepare_uterances(movie_lines_path: str, word_freq: dict) -> dict:
     """
     dialogs = {}
     with open(movie_lines_path, "rb") as movie_lines:
-        for movie_line_row in tqdm.tqdm(movie_lines):
+        for movie_line_row in tqdm(movie_lines):
             id, movie_line_clean = prepare_movie_line(movie_line_row)
             raw_words = prepare_input(movie_line_clean)
             unked_words = replace_with_unk(raw_words, word_freq)
@@ -79,7 +79,7 @@ def build_vocab(movie_lines_path: str, word_freq: dict) -> Tuple:
     word2index = {"<pad>": PAD_ID, "<end>": EOS_ID, "<unk>": UNK_ID}
     index = 0
     with open(movie_lines_path, "rb") as movie_lines:
-        for movie_line_row in tqdm.tqdm(movie_lines):
+        for movie_line_row in tqdm(movie_lines):
             _, movie_line_clean = prepare_movie_line(movie_line_row)
             raw_words = prepare_input(movie_line_clean)
             unked_words = replace_with_unk(raw_words, word_freq)
@@ -116,7 +116,7 @@ def design_inputs_outputs_vocab(args) -> None:
     dialogs_sentences = prepare_uterances(mov_lines_path, word_freq)
 
     with open(mov_conv_path, "rb") as mov_conv_file:
-        for movie_conv_row in tqdm.tqdm(mov_conv_file):
+        for movie_conv_row in tqdm(mov_conv_file):
             conversations = prepare_movie_conv(movie_conv_row)
             for c in range(len(conversations) - 1):
                 inputs.append(dialogs_sentences[conversations[c]])
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--pickle_dir", type=str, default="data/", help="Path where the data is"
+        "--pickle_dir", type=str, default="pickles/", help="Path where the pickle dir is"
     )
 
     design_inputs_outputs_vocab(parser.parse_args())
