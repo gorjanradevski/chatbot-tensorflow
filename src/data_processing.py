@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
 
-def compute_word_frequencies(movie_lines_path: str) -> dict:
+def compute_word_frequencies(movie_lines_path: str, pickle_dir) -> dict:
     """Computes the word frequencies of all words
 
     Args:
@@ -111,6 +111,7 @@ def design_inputs_outputs_vocab(args) -> None:
     pickle_outputs_length = os.path.join(args.pickle_dir, "outputs_length.pkl")
     pickle_word2index = os.path.join(args.pickle_dir, "word2index.pkl")
     pickle_index2word = os.path.join(args.pickle_dir, "index2word.pkl")
+    pickle_freq = os.path.join(args.pickle_dir, "word_freq.pkl")
 
     # Compute input and outputs pickles
     inputs = []
@@ -118,7 +119,7 @@ def design_inputs_outputs_vocab(args) -> None:
     # Compute inputs length and outputs length
     inputs_lengths = []
     outputs_lengths = []
-    word_freq = compute_word_frequencies(mov_lines_path)
+    word_freq = compute_word_frequencies(mov_lines_path, args.pickle_dir)
     dialogs = prepare_uterances(mov_lines_path, word_freq)
 
     with open(mov_conv_path, "rb") as mov_conv_file:
@@ -146,6 +147,9 @@ def design_inputs_outputs_vocab(args) -> None:
     pickle.dump(index2word, open(pickle_index2word, "wb"))
     log.info(f"Word2index and index2word pickles dumped at location {args.pickle_dir}")
 
+    pickle.dump(word_freq, open(pickle_freq, "wb"))
+    log.info(
+        f"Word frequency pickle dumped at location {args.pickle_dir}")
 
 if __name__ == "__main__":
 

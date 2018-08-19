@@ -9,10 +9,10 @@ from utils.config import (
     EMBEDDING_SIZE,
 )
 
+from utils.pickles_utils import load_vocabs_pickles, load_input_output_lengths_pickles
 from utils.seq2seq_utils import pad_truncate_sequences
 
 import tensorflow as tf
-import pickle
 import os
 from typing import Tuple
 from tqdm import tqdm
@@ -35,19 +35,13 @@ def create_training_data(args) -> Tuple:
         training_data_decoder_targets: The decoder targets
 
     """
-    pickle_dir = args.pickle_dir
-    pickle_inputs = os.path.join(pickle_dir, "inputs.pkl")
-    pickle_outputs = os.path.join(pickle_dir, "outputs.pkl")
-    pickle_inputs_length = os.path.join(pickle_dir, "inputs_length.pkl")
-    pickle_outputs_length = os.path.join(pickle_dir, "outputs_length.pkl")
-    pickle_word2index = os.path.join(pickle_dir, "word2index.pkl")
+    inputs, outputs, training_data_encoder_l, training_data_decoder_l = load_input_output_lengths_pickles(
+        args.pickle_dir, io_b=True, iol_b=True
+    )
 
-    training_data_encoder_l = pickle.load(open(pickle_inputs_length, "rb"))
-    training_data_decoder_l = pickle.load(open(pickle_outputs_length, "rb"))
-
-    inputs = pickle.load(open(pickle_inputs, "rb"))
-    outputs = pickle.load(open(pickle_outputs, "rb"))
-    word2index = pickle.load(open(pickle_word2index, "rb"))
+    word2index = load_vocabs_pickles(
+        args.pickle_dir, word2index_b=True, index2word_b=False
+    )
 
     training_data_encoder = pad_truncate_sequences(
         inputs, word2index, MAX_INPUT_OUTPUT_LENGTH, input=True
@@ -283,7 +277,7 @@ def build_graph() -> Tuple:
 
         batch_logits = tf.transpose(decoder_logits, [1, 0, 2])
 
-        decoder_prediction = tf.argmax(batch_logits, 2, name="prediction")
+        prediction = tf.argmax(batch_logits, 2, name="prediction")
 
     with tf.variable_scope("loss_optimization"):
 
@@ -314,6 +308,7 @@ def build_graph() -> Tuple:
         is_training,
         loss_fun,
         optimizer,
+        prediction,
     )
 
 
@@ -332,6 +327,26 @@ def train_model(
     output_data_length,
     output_target_data,
 ):
+    """Given all placeholders, loss_fun, optimizer and inputs it trains the model
+
+    Args:
+        encoder_placeholder:
+        encoder_length_placeholder:
+        decoder_placeholder:
+        decoder_length_placeholder:
+        decoder_targets_placeholder:
+        is_training_placeholder:
+        loss_fun:
+        optimizer:
+        input_data:
+        input_data_length:
+        output_data:
+        output_data_length:
+        output_target_data:
+
+    Returns:
+
+    """
     init = tf.global_variables_initializer()
 
     with tf.Session() as sess:
@@ -393,7 +408,7 @@ if __name__ == "__main__":
         parser.parse_args()
     )
 
-    encoder_placeholder, encoder_length_placeholder, decoder_placeholder, decoder_length_placeholder, decoder_targets_placeholder, is_training_placeholder, loss_fun, optimizer = (
+    encoder_placeholder, encoder_length_placeholder, decoder_placeholder, decoder_length_placeholder, decoder_targets_placeholder, is_training_placeholder, loss_fun, optimizer, _ = (
         build_graph()
     )
 
