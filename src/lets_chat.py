@@ -1,5 +1,5 @@
-from utils.pickles_utils import load_vocabs_pickles, load_word_freq
-from utils.data_processing_utils import prepare_input, replace_with_unk
+from utils.pickles_utils import load_vocabs_pickles
+from utils.data_processing_utils import prepare_input, replace_with_unk_chat
 from utils.config import MAX_INPUT_OUTPUT_LENGTH, SEQ2SEQ_BATCH_SIZE
 from utils.seq2seq_utils import pad_truncate_sequences
 
@@ -13,7 +13,45 @@ import argparse
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 
-def prepare_output(
+def load_model_parameters(
+    meta_seq2seq_path: str, model_seq2seq_path: str, sess: tf.Session
+):
+
+    loader = tf.train.import_meta_graph(meta_seq2seq_path)
+    loader.restore(sess, model_seq2seq_path)
+
+    encoder_input = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/encoder_inputs:0"
+    )
+    encoder_inputs_length = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/encoder_inputs_length:0"
+    )
+    decoder_input = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/decoder_inputs:0"
+    )
+    decoder_inputs_length = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/decoder_inputs_length:0"
+    )
+    decoder_targets = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/decoder_targets:0"
+    )
+    prediction = tf.get_default_graph().get_tensor_by_name("Decoder/prediction:0")
+    is_training = tf.get_default_graph().get_tensor_by_name(
+        "Placeholders/is_training:0"
+    )
+
+    return (
+        encoder_input,
+        encoder_inputs_length,
+        decoder_input,
+        decoder_inputs_length,
+        decoder_targets,
+        prediction,
+        is_training,
+    )
+
+
+def predict_output(
     index2word,
     input_chat,
     encoder_input,
@@ -41,12 +79,7 @@ def prepare_output(
     }
 
     indexes_of_words = sess.run(prediction, feed_dict=feed_dict)
-
-    sentence = []
-
-    for index in indexes_of_words[0]:
-
-        sentence.append(index2word[index])
+    sentence = [index2word[index] for index in indexes_of_words[0]]
 
     return sentence
 
@@ -60,41 +93,17 @@ def start_chatting(args):
     word2index, index2word = load_vocabs_pickles(
         args.pickle_dir, word2index_b=True, index2word_b=True
     )
-    word_freq = load_word_freq(args.pickle_dir)
 
     meta_seq2seq_path = os.path.join(args.log_dir, "seq2seq.meta")
     model_seq2seq_path = os.path.join(args.log_dir, "seq2seq")
 
     with tf.Session() as sess:
 
-        loader = tf.train.import_meta_graph(meta_seq2seq_path)
-        loader.restore(sess, model_seq2seq_path)
-
-        encoder_input = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/encoder_inputs:0"
-        )
-        encoder_inputs_length = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/encoder_inputs_length:0"
+        encoder_input, encoder_inputs_length, decoder_input, decoder_inputs_length, decoder_targets, prediction, is_training = load_model_parameters(
+            meta_seq2seq_path, model_seq2seq_path, sess
         )
 
-        decoder_input = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/decoder_inputs:0"
-        )
-        decoder_inputs_length = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/decoder_inputs_length:0"
-        )
-        decoder_targets = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/decoder_targets:0"
-        )
-
-        prediction = tf.get_default_graph().get_tensor_by_name("Decoder/prediction:0")
-        is_training = tf.get_default_graph().get_tensor_by_name(
-            "Placeholders/is_training:0"
-        )
-
-        print(
-            "Chat started, please keep the input below 20 words, for exit type --- Bye! ---"
-        )
+        print("Chat started! For exit type: Bye!")
 
         while True:
 
@@ -107,12 +116,13 @@ def start_chatting(args):
                 break
 
             input_chat_raw = prepare_input(line)
-            input_chat_clean = replace_with_unk(input_chat_raw, word_freq)
+            input_chat_clean = replace_with_unk_chat(input_chat_raw, word2index)
             polished_input = pad_truncate_sequences(
-                input_chat_clean, word2index, MAX_INPUT_OUTPUT_LENGTH, input=True
+                [input_chat_clean], word2index, MAX_INPUT_OUTPUT_LENGTH, input=True
             )
+            print(polished_input[0])
 
-            output = prepare_output(
+            reply = predict_output(
                 index2word,
                 polished_input,
                 encoder_input,
@@ -125,7 +135,7 @@ def start_chatting(args):
                 sess,
             )
 
-            print("Bot says:\n", " ".join(output))
+            print("Bot says:\n", " ".join(reply))
 
             print("----------------------------------------------")
 
@@ -145,10 +155,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--log_dir",
-        type=str,
-        default="../logs/",
-        help="Path where the log dir is",
+        "--log_dir", type=str, default="../logs/", help="Path where the log dir is"
     )
 
     start_chatting(parser.parse_args())

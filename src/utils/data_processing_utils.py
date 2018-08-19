@@ -69,3 +69,18 @@ def prepare_movie_conv(movie_conv_raw: bytearray) -> list:
     conversation = ast.literal_eval(line.split(" +++$+++ ")[-1])
 
     return conversation
+
+def replace_with_unk_chat(input_words: list, word2index: dict) -> list:
+    """
+
+    Args:
+        input_words: A list of words
+        freq: Dictionary that contains that frequency of all words
+
+    Returns:
+        output_words: A list of words
+
+    """
+    output_words = [word if word in word2index else "<unk>" for word in input_words]
+
+    return output_words
