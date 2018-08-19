@@ -55,7 +55,6 @@ def prepare_uterances(movie_lines_path: str, word_freq: dict) -> dict:
 
     """
     dialogs = {}
-    lengths = {}
     with open(movie_lines_path, "rb") as movie_lines:
         for movie_line_row in tqdm(movie_lines):
             id, movie_line_clean = prepare_movie_line(movie_line_row)
@@ -79,7 +78,7 @@ def build_vocab(movie_lines_path: str, word_freq: dict) -> Tuple:
 
     """
     word2index = {"<pad>": PAD_ID, "<end>": EOS_ID, "<unk>": UNK_ID}
-    index = 0
+    index = 3
     with open(movie_lines_path, "rb") as movie_lines:
         for movie_line_row in tqdm(movie_lines):
             _, movie_line_clean = prepare_movie_line(movie_line_row)
@@ -128,13 +127,12 @@ def design_inputs_outputs_vocab(args) -> None:
             for c in range(len(conversations) - 1):
                 input = dialogs[conversations[c]]
                 output = dialogs[conversations[c + 1]]
-                input_length = len(input)
-                output_length = len(output)
+                input_length = len(input) + 1 if len(input) <= 19 else 20
+                output_length = len(output) + 1 if len(output) <= 19 else 20
                 inputs.append(input)
                 outputs.append(output)
                 inputs_lengths.append(input_length)
                 outputs_lengths.append(output_length)
-
 
     pickle.dump(inputs, open(pickle_inputs, "wb"))
     pickle.dump(outputs, open(pickle_outputs, "wb"))
@@ -162,7 +160,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--pickle_dir", type=str, default="pickles/", help="Path where the pickle dir is"
+        "--pickle_dir",
+        type=str,
+        default="pickles/",
+        help="Path where the pickle dir is",
     )
 
     design_inputs_outputs_vocab(parser.parse_args())

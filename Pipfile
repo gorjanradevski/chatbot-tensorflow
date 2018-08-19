@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 tqdm = "*"
 numpy = "*"
-tensorflow = "*"
+tensorflow = "==1.7"
 
 [dev-packages]
 

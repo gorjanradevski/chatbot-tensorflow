@@ -226,6 +226,7 @@ if __name__ == "__main__":
     inputs_placeholder, labels_placeholder, loss_fun, optimizer, embeddings = (
         build_skipgram()
     )
+
     run(
         inputs_placeholder,
         labels_placeholder,
