@@ -15,8 +15,12 @@ from utils.seq2seq_utils import pad_truncate_sequences
 import tensorflow as tf
 import os
 from typing import Tuple
-from tqdm import tqdm
+from tqdm import trange
 import argparse
+import logging
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger()
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
@@ -142,9 +146,11 @@ def build_graph() -> Tuple:
             trainable=True,
             name="embeddings",
         )
-        embedding_saver = tf.train.Saver({"embeddings": embeddings})
-        with tf.Session() as sess:
-            embedding_saver.restore(sess, "logs/skipgram")
+
+        # TODO: Train skipgram to obtain embeddings
+        # embedding_saver = tf.train.Saver({"embeddings": embeddings})
+        # with tf.Session() as sess:
+        # embedding_saver.restore(sess, "logs/skipgram")
 
         encoder_inputs_embedded = tf.nn.embedding_lookup(embeddings, encoder_inputs)
         decoder_inputs_embedded = tf.nn.embedding_lookup(embeddings, decoder_inputs)
@@ -321,6 +327,7 @@ def train_model(
     is_training_placeholder,
     loss_fun,
     optimizer,
+    prediction,
     input_data,
     input_data_length,
     output_data,
@@ -360,8 +367,9 @@ def train_model(
         for e in range(SEQ2SEQ_EPOCHS):
 
             epoch_loss = 0
+            train_for_epoch = trange(num_steps)
 
-            for step in tqdm(range(num_steps)):
+            for step in train_for_epoch:
                 input_batch, input_batch_length, output_batch, output_batch_length, output_batch_targets = generate_batch(
                     input_data,
                     input_data_length,
@@ -381,10 +389,11 @@ def train_model(
                 }
 
                 _, loss = sess.run([optimizer, loss_fun], feed_dict)
-
                 epoch_loss += loss
 
-            print(f"Loss on epoch {e}:{epoch_loss}")
+                train_for_epoch.set_description(
+                    f"Current step loss: %g" % loss
+                )
 
         save_path = saver.save(sess, "logs/seq2seq")
         print(f"Model saved in path {save_path}")
@@ -408,7 +417,7 @@ if __name__ == "__main__":
         parser.parse_args()
     )
 
-    encoder_placeholder, encoder_length_placeholder, decoder_placeholder, decoder_length_placeholder, decoder_targets_placeholder, is_training_placeholder, loss_fun, optimizer, _ = (
+    encoder_placeholder, encoder_length_placeholder, decoder_placeholder, decoder_length_placeholder, decoder_targets_placeholder, is_training_placeholder, loss_fun, optimizer, prediction = (
         build_graph()
     )
 
@@ -423,6 +432,7 @@ if __name__ == "__main__":
         is_training_placeholder,
         loss_fun,
         optimizer,
+        prediction,
         training_data_encoder,
         training_data_encoder_l,
         training_data_decoder,
